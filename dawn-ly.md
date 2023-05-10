@@ -13,8 +13,7 @@
 
 ## 代码仓库链接
 
-https://github.com/dawn-ly/text
-
+https://github.com/dawn-ly/blockchain-in-js-workshop-2021/blob/lesson1/dawn-ly.md
 
 
 ## 第一课代码
