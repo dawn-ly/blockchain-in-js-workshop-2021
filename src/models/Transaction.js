@@ -1,68 +1,26 @@
 import sha256 from 'crypto-js/sha256.js'
 
-export const DIFFICULTY = 2
-
-class Block {
-  constructor(blockchain, prevHash, height, data, coinbaseBeneficiary, transactions = []) {
-    this.blockchain = blockchain
-    this.prevHash = prevHash
-    this.height = height
-    this.data = data
-    this.coinbaseBeneficiary = coinbaseBeneficiary
-    this.transactions = transactions
+class Transaction {
+  constructor(senderAddress, recipientAddress, amount, fee) {
+    this.senderAddress = senderAddress
+    this.recipientAddress = recipientAddress
+    this.amount = amount
+    this.fee = fee
     this.timestamp = new Date().getTime()
-    this.nonce = 0
-    this.hash = this.calculateHash()
+    this.txHash = this._calculateHash()
   }
 
-  calculateHash() {
-    return sha256(
-      this.prevHash + this.height.toString() + this.data + this.nonce.toString()
-    ).toString()
-  }  
+  // 计算交易 hash 的摘要函数
   _calculateHash() {
     return sha256(
-      this.prevHash + this.height.toString() + this.data + this.nonce.toString()
+      this.senderAddress + this.recipientAddress + this.amount.toString() + this.fee.toString() + this.timestamp.toString()
     ).toString()
-  } 
-  combinedTransactionsHash() {
-    const transactionHashes = this.transactions.map((transaction) => transaction.txHash)
-    return sha256(transactionHashes.join('')).toString()
-  }
-  _calculateMerkleRoot() {
-    const transactionHashes = this.transactions.map((transaction) => transaction.txHash)
-    let level = transactionHashes
-
-    while (level.length > 1) {
-      const nextLevel = []
-      for (let i = 0; i < level.length; i += 2) {
-        const left = level[i]
-        const right = i + 1 < level.length ? level[i + 1] : left
-        const hash = sha256(left + right).toString()
-        nextLevel.push(hash)
-      }
-      level = nextLevel
-    }
-
-    return level[0]
   }
 
-
-  isValid() {
-    const leadingZeros = '0'.repeat(DIFFICULTY)
-    return this.hash.substring(0, DIFFICULTY) === leadingZeros
-  }
-
-  addTransaction(transaction) {
-    this.transactions.push(transaction)
-    this.merkleRoot = this._calculateMerkleRoot()
-    this.hash = this._calculateHash()
-  }
-
-  setNonce(nonce) {
-    this.nonce = nonce
-    this.hash = this.calculateHash()
+  // 更新交易 hash
+  _setHash() {
+    this.txHash = this._calculateHash()
   }
 }
 
-export default Block
+export default Transaction
