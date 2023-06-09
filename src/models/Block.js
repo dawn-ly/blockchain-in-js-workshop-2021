@@ -3,29 +3,66 @@ import sha256 from 'crypto-js/sha256.js'
 export const DIFFICULTY = 2
 
 class Block {
-  // 1. 完成构造函数及其参数
+  constructor(blockchain, prevHash, height, data, coinbaseBeneficiary, transactions = []) {
+    this.blockchain = blockchain
+    this.prevHash = prevHash
+    this.height = height
+    this.data = data
+    this.coinbaseBeneficiary = coinbaseBeneficiary
+    this.transactions = transactions
+    this.timestamp = new Date().getTime()
+    this.nonce = 0
+    this.hash = this.calculateHash()
+  }
 
-  constructor() {}
+  calculateHash() {
+    return sha256(
+      this.prevHash + this.height.toString() + this.data + this.nonce.toString()
+    ).toString()
+  }  
+  _calculateHash() {
+    return sha256(
+      this.prevHash + this.height.toString() + this.data + this.nonce.toString()
+    ).toString()
+  } 
+  combinedTransactionsHash() {
+    const transactionHashes = this.transactions.map((transaction) => transaction.txHash)
+    return sha256(transactionHashes.join('')).toString()
+  }
+  _calculateMerkleRoot() {
+    const transactionHashes = this.transactions.map((transaction) => transaction.txHash)
+    let level = transactionHashes
 
-  isValid() {}
+    while (level.length > 1) {
+      const nextLevel = []
+      for (let i = 0; i < level.length; i += 2) {
+        const left = level[i]
+        const right = i + 1 < level.length ? level[i + 1] : left
+        const hash = sha256(left + right).toString()
+        nextLevel.push(hash)
+      }
+      level = nextLevel
+    }
 
-  setNonce(nonce) {}
+    return level[0]
+  }
 
-  // 根据交易变化更新区块 hash
-  _setHash() {}
 
-  // 汇总计算交易的 Hash 值
-  /**
-   * 默克尔树实现
-   */
-  combinedTransactionsHash() {}
+  isValid() {
+    const leadingZeros = '0'.repeat(DIFFICULTY)
+    return this.hash.substring(0, DIFFICULTY) === leadingZeros
+  }
 
-  // 添加交易到区块
-  /**
-   *
-   * 需包含 UTXOPool 的更新与 hash 的更新
-   */
-  addTransaction() {}
+  addTransaction(transaction) {
+    this.transactions.push(transaction)
+    this.merkleRoot = this._calculateMerkleRoot()
+    this.hash = this._calculateHash()
+  }
+
+  setNonce(nonce) {
+    this.nonce = nonce
+    this.hash = this.calculateHash()
+  }
 }
 
 export default Block
