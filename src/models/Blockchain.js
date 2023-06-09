@@ -1,41 +1,106 @@
 import UTXOPool from './UTXOPool.js'
 
 class Blockchain {
-  // 1. 完成构造函数及其参数
-  /* 构造函数需要包含
-      - 名字
-      - 创世区块
-      - 存储区块的映射
-  */
-  constructor() {}
+  constructor(name) {
+    this.name = name
+    this.blocks = new Map()
+    this.genesis = null
+  }
 
-  // 2. 定义 longestChain 函数
-  /*
-    返回当前链中最长的区块信息列表
-  */
   longestChain() {
-    return []
+    let longestChain = [];
+    let maxHeight = 0;
+  
+    for (const block of this.blocks.values()) {
+      let currentBlock = block;
+      let chain = [currentBlock];
+  
+      // Traverse the blockchain from current block to genesis block
+      while (currentBlock.prevHash !== 'root') {
+        const prevBlock = this.blocks.get(currentBlock.prevHash);
+  
+        if (!prevBlock) {
+          break; // Stop the loop if previous block is not found
+        }
+  
+        chain.unshift(prevBlock); // Add previous block to the chain
+        currentBlock = prevBlock; // Update current block reference
+      }
+  
+      if (chain.length > maxHeight) {
+        longestChain = chain;
+        maxHeight = chain.length;
+      }
+    }
+  
+    return longestChain;
+  }
+  
+
+  calculateHeight(block) {
+    let height = 0
+    let currentBlock = block
+    while (currentBlock.prevHash !== 'root') {
+      currentBlock = this.blocks.get(currentBlock.prevHash)
+      height++
+    }
+
+    return height
   }
 
-  // 判断当前区块链是否包含
   containsBlock(block) {
-    // 添加判断方法
-    return false
+    return this.blocks.has(block.hash)
   }
 
-  // 获得区块高度最高的区块
   maxHeightBlock() {
-    // return Block
+    let maxHeight = -1
+    let maxHeightBlock = null
+    for (const [hash, block] of this.blocks.entries()) {
+      const height = this.calculateHeight(block)
+      if (height > maxHeight) {
+        maxHeight = height
+        maxHeightBlock = block
+      }
+    }
+
+    return maxHeightBlock
   }
 
-  // 添加区块
-  /*
-
-  */
   _addBlock(block) {
-    if (!block.isValid()) return
-    if (this.containsBlock(block)) return
+    if (!block.isValid()) return;
+    if (this.containsBlock(block)) return;
+  
+    const prevBlock = this.blocks.get(block.prevHash);
+    if (prevBlock) {
+      block.height = prevBlock.height + 1;
+    } else {
+      block.height = 1; // Set height to 1 for the genesis block
+    }
+  
+    // Update UTXO pool logic
+    block.utxoPool = new UTXOPool(prevBlock ? prevBlock.utxoPool : null);
+  
+    // Process transactions in the new block
+    for (const tx of block.transactions) {
+      if (!tx.isValid()) continue;
+  
+      for (const input of tx.inputs) {
+        const utxo = block.utxoPool.getUTXO(input.prevTxHash, input.outputIndex);
+        if (utxo) {
+          block.utxoPool.removeUTXO(input.prevTxHash, input.outputIndex);
+        }
+      }
+  
+      for (let i = 0; i < tx.outputs.length; i++) {
+        const output = tx.outputs[i];
+        block.utxoPool.addUTXO(tx.hash, i, output);
+      }
+    }
+  
+    this.blocks.set(block.hash, block);
   }
+  
+  
 }
 
 export default Blockchain
